@@ -4,7 +4,7 @@ import { List, InputWithLabel } from './components';
 import useSemiPersistentState from './hooks/useSemiPersistentState';
 
 function App() {
-  const stories = [
+  const initialStories = [
     {
       author: 'Jon Fingas',
       title: 'Tesla buys $1.5 in Bitcoin, will soon accept it as payment',
@@ -28,7 +28,25 @@ function App() {
     },
   ];
 
+  const getAsyncStories = () =>
+    new Promise((resolve) =>
+      setTimeout(() => resolve({ data: { stories: initialStories } }), 2000)
+    );
+
   const [searchTerm, setSearchTerm] = useSemiPersistentState('search', 'Tesla');
+  const [stories, setStories] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isError, setIsError] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsLoading(true);
+    getAsyncStories()
+      .then((result) => {
+        setStories(result.data.stories);
+        setIsLoading(false);
+      })
+      .catch(() => setIsError(true));
+  }, []);
 
   const handleSearch = (event) => {
     setSearchTerm(event.target.value);
@@ -50,7 +68,10 @@ function App() {
         <strong>Search:</strong>
       </InputWithLabel>
       <hr />
-      <List list={searchedStories} />
+
+      {isError && 'Error fetchin data.'}
+
+      {isLoading ? <p>Loading... </p> : <List list={searchedStories} />}
     </div>
   );
 }
