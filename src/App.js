@@ -1,9 +1,10 @@
 import './App.css';
 import React from 'react';
-import { List } from './components';
+import { List, InputWithLabel } from './components';
+import useSemiPersistentState from './hooks/useSemiPersistentState';
 
 function App() {
-  const list = [
+  const stories = [
     {
       author: 'Jon Fingas',
       title: 'Tesla buys $1.5 in Bitcoin, will soon accept it as payment',
@@ -27,22 +28,29 @@ function App() {
     },
   ];
 
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchTerm, setSearchTerm] = useSemiPersistentState('search', 'Tesla');
 
-  const handleChange = (event) => {
+  const handleSearch = (event) => {
     setSearchTerm(event.target.value);
   };
+
+  const searchedStories = stories.filter((story) => {
+    return story.title.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <div className="App">
       <h1>Latest news of the World.</h1>
-
-      <label htmlFor="search">Search: </label>
-      <input id="search" type="text" onChange={handleChange} />
-
+      <InputWithLabel
+        id="search"
+        value={searchTerm}
+        isFocused
+        onInputChange={handleSearch}
+      >
+        <strong>Search:</strong>
+      </InputWithLabel>
       <hr />
-      <List list={list} />
-      <p>{searchTerm}</p>
+      <List list={searchedStories} />
     </div>
   );
 }
