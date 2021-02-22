@@ -1,77 +1,71 @@
 import './App.css';
 import React from 'react';
-import { List, InputWithLabel } from './components';
+import axios from 'axios';
+
+import { List, InputWithLabel, SearchForm } from './components';
 import useSemiPersistentState from './hooks/useSemiPersistentState';
+import storiesReducer from './reducers/storiesReducer';
+
+const API_ENDPOINT = `https://newsapi.org/v2/everything?q=bitcoin&apiKey=f9e7a9eb35ed4702afcfb89b68190ff1`;
 
 function App() {
-  const initialStories = [
-    {
-      author: 'Jon Fingas',
-      title: 'Tesla buys $1.5 in Bitcoin, will soon accept it as payment',
-      url:
-        'https://www.endgadget.com/tesla-to-take-bitcoin-payments-140109988.html',
-      publishedAt: '2021-02-08',
-    },
-    {
-      author: 'Gregory Barber',
-      title: 'Would you trade a Bitcoin for a Tesla?',
-      url: 'https://www.wired.com/story/would-you-trade-bitcoin-tesla',
-      publishedAt: '2021-02-09',
-    },
-    {
-      author: 'Manish Singh',
-      title:
-        'Jack Dorsey and Jay Z invest $23.6 million to fund Bitcoin development',
-      url:
-        'http://techcrunch.com/2021/02/12/jack-dorsey-and-jay-z-invest-23-6-million-to-fund-bitcoin-development',
-      publishedAt: '2021-02-12',
-    },
-  ];
-
-  const getAsyncStories = () =>
-    new Promise((resolve) =>
-      setTimeout(() => resolve({ data: { stories: initialStories } }), 2000)
-    );
-
   const [searchTerm, setSearchTerm] = useSemiPersistentState('search', 'Tesla');
-  const [stories, setStories] = React.useState([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [isError, setIsError] = React.useState(false);
+  const [stories, dispatchStories] = React.useReducer(storiesReducer, {
+    data: [],
+    isLoading: false,
+    isError: false,
+  });
+
+  const [url, setUrl] = React.useState(
+    `https://newsapi.org/v2/everything?q=${searchTerm}&apiKey=f9e7a9eb35ed4702afcfb89b68190ff1`
+  );
+
+  const handleFetchStories = React.useCallback(async () => {
+    if (!searchTerm) return;
+    dispatchStories({ type: 'STORIES_FETCH_INIT' });
+
+    try {
+      const result = await axios.get(url);
+      console.log('RESULT', result);
+      dispatchStories({
+        type: 'STORIES_FETCH_SUCCESS',
+        payload: result.data.articles,
+      });
+    } catch {
+      dispatchStories({ TYPE: 'STORIES_FETCH_FAILURE' });
+    }
+  }, [url]);
 
   React.useEffect(() => {
-    setIsLoading(true);
-    getAsyncStories()
-      .then((result) => {
-        setStories(result.data.stories);
-        setIsLoading(false);
-      })
-      .catch(() => setIsError(true));
-  }, []);
+    handleFetchStories();
+  }, [handleFetchStories]);
 
-  const handleSearch = (event) => {
+  const handleSearchInput = (event) => {
     setSearchTerm(event.target.value);
   };
 
-  const searchedStories = stories.filter((story) => {
-    return story.title.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  const handleSearchSubmit = (event) => {
+    setUrl(
+      `https://newsapi.org/v2/everything?q=${searchTerm}&apiKey=f9e7a9eb35ed4702afcfb89b68190ff1`
+    );
+
+    event.preventDefault();
+  };
 
   return (
     <div className="App">
       <h1>Latest news of the World.</h1>
-      <InputWithLabel
-        id="search"
-        value={searchTerm}
-        isFocused
-        onInputChange={handleSearch}
-      >
-        <strong>Search:</strong>
-      </InputWithLabel>
+
+      <SearchForm
+        searchTerm={searchTerm}
+        onSearchInput={handleSearchInput}
+        onSearchSearchSubmit={handleSearchSubmit}
+      />
       <hr />
 
-      {isError && 'Error fetchin data.'}
+      {stories.isError && 'Something went wrong.'}
 
-      {isLoading ? <p>Loading... </p> : <List list={searchedStories} />}
+      {stories.isLoading ? <p>Loading... </p> : <List list={stories.data} />}
     </div>
   );
 }
